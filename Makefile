@@ -7,7 +7,9 @@ VENDOR="Autoconf contributors"
 MAINTAINER="Ryan Parman"
 DESCRIPTION="An extensible package of M4 macros that produce shell scripts to automatically configure software source code packages."
 URL=https://www.gnu.org/software/autoconf/
-RHEL=$(shell rpm -q --queryformat '%{VERSION}' centos-release)
+ACTUALOS=$(shell osqueryi "select * from os_version;" --json | jq -r ".[].name")
+EL=$(shell if [[ "$(ACTUALOS)" == "Amazon Linux AMI" ]]; then echo alami; else echo el; fi)
+RHEL=$(shell [[ -f /etc/centos-release ]] && rpm -q --queryformat '%{VERSION}' centos-release)
 
 #-------------------------------------------------------------------------------
 
@@ -26,6 +28,8 @@ info:
 	@ echo "MAINTAINER:  $(MAINTAINER)"
 	@ echo "DESCRIPTION: $(DESCRIPTION)"
 	@ echo "URL:         $(URL)"
+	@ echo "OS:          $(ACTUALOS)"
+	@ echo "EL:          $(EL)"
 	@ echo "RHEL:        $(RHEL)"
 	@ echo " "
 
@@ -34,6 +38,15 @@ info:
 .PHONY: clean
 clean:
 	rm -Rf /tmp/installdir* autoconf*
+
+#-------------------------------------------------------------------------------
+
+.PHONY: install-deps
+install-deps:
+
+	yum -y install \
+		tex \
+	;
 
 #-------------------------------------------------------------------------------
 
@@ -76,7 +89,7 @@ package:
 		--rpm-digest md5 \
 		--rpm-compression gzip \
 		--rpm-os linux \
-		--rpm-dist el$(RHEL) \
+		--rpm-dist $(EL)$(RHEL) \
 		--rpm-auto-add-directories \
 		usr/local/bin \
 		usr/local/share \
@@ -86,4 +99,4 @@ package:
 
 .PHONY: move
 move:
-	mv *.rpm /vagrant/repo
+	[[ -d /vagrant/repo ]] && mv *.rpm /vagrant/repo/
